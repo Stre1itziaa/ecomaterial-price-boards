@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 需求监控 · 信号板</title>
+<script src="echarts.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root{
+    --bg:#f8fafc; --card:#ffffff; --line:#e5e7eb; --line-2:#eef2f6;
+    --txt:#0f172a; --sub:#64748b; --faint:#94a3b8;
+    --accent:#4f46e5; --accent-bg:#eef2ff;
+    --up:#ef4444; --dn:#10b981; --wa:#f59e0b;
+    --r:10px;
+    --st-ok-bg:#f0fdf4; --st-ok-bd:#10b981;
+    --st-wa-bg:#fffbeb; --st-wa-bd:#f59e0b;
+    --st-al-bg:#fef2f2; --st-al-bd:#dc2626;
+    --st-id-bg:#fafafa; --st-id-bd:#d4d4d8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-size:13px;line-height:1.45;
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 24px 40px;display:flex;flex-direction:column;gap:16px}
+  .top{height:56px;background:#fff;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;padding:0 28px;gap:10px}
+  .top .logo{font-size:14.5px;font-weight:650}
+  .top .tag{font-size:11px;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .top .gen{margin-left:auto;font-size:11.5px;color:var(--faint)}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+  .card h2{font-size:14px;font-weight:650;letter-spacing:-.01em}
+  .card .h{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .card .h .sp{flex:1}
+  .card .h .hint{font-size:11px;color:var(--faint)}
+  .sect{font-size:12.5px;font-weight:650;color:var(--sub)}
+  .sect .r{font-weight:400;color:var(--faint);font-size:11px;margin-left:8px}
+  .bdg{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:550;
+    border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .bdg i{width:6px;height:6px;border-radius:50%}
+  .bdg.wa{background:#fef3c7;color:#92400e}.bdg.wa i{background:#f59e0b}
+  .bdg.al{background:#fee2e2;color:#b91c1c}.bdg.al i{background:#ef4444}
+  .bdg.ok{background:#d1fae5;color:#047857}.bdg.ok i{background:#10b981}
+  .bdg.nt{background:var(--line-2);color:var(--sub)}.bdg.nt i{background:#94a3b8}
+  .wt{font-size:10.5px;font-weight:650;color:var(--accent);background:var(--accent-bg);
+    border-radius:999px;padding:1.5px 8px}
+  .concl{display:flex;align-items:center;gap:22px;padding:16px 24px}
+  .concl .lights{display:flex;gap:14px;align-items:center}
+  .lg{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:650;color:var(--txt)}
+  .bulb{width:26px;height:26px;border-radius:50%;display:block;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.55), 0 0 0 4px var(--halo)}
+  .bulb.green{background:#10b981;--halo:#d1fae5}
+  .bulb.amber{background:#f59e0b;--halo:#fef3c7}
+  .bulb.red{background:#ef4444;--halo:#fee2e2;box-shadow:0 0 0 4px #fee2e2,0 0 14px rgba(239,68,68,.45)}
+  .concl .verdict{font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+  .concl .drv{font-size:12.5px;line-height:1.6;border-left:2px solid var(--line);padding-left:14px;flex:1}
+  .concl .drv b{font-weight:650}
+  .concl .ok-note{font-size:11px;color:var(--faint);line-height:1.6;max-width:220px}
+  .concl .meta{font-size:11px;color:var(--faint);text-align:right;line-height:1.6;
+    border-left:1px solid var(--line);padding-left:16px}
+  .comp{display:flex;align-items:center;gap:22px;padding:20px 24px}
+  .comp .n{font-size:40px;font-weight:700;letter-spacing:-.025em;line-height:1}
+  .comp .n small{font-size:15px;color:var(--faint);font-weight:600}
+  .comp .lbl{font-size:11px;color:var(--faint);line-height:1.4;max-width:120px}
+  .comp .thermo{flex:1;height:8px;border-radius:999px;background:var(--line-2);position:relative}
+  .comp .thermo i{position:absolute;inset:0 auto 0 0;border-radius:999px;
+    background:linear-gradient(90deg,#10b981,#f59e0b 60%,#ef4444)}
+  .comp .thermo u{position:absolute;top:-4px;left:70%;width:2px;height:16px;background:var(--txt);opacity:.45}
+  .comp .scale{display:flex;gap:26px;font-size:10.5px;color:var(--faint);margin-top:6px}
+  .comp .tiers{display:flex;flex-direction:column;gap:8px}
+  .comp .trow{display:flex;align-items:center;gap:9px;font-size:12px}
+  .comp .trow .bar{width:120px;height:6px;border-radius:999px;background:var(--line-2);overflow:hidden}
+  .comp .trow .bar i{display:block;height:100%;border-radius:999px}
+  .comp .fire{font-size:12px;line-height:1.6;border-left:2px solid var(--up);padding-left:12px;max-width:320px}
+  .comp .fire b{font-weight:650}
+  .comp .fire .s{color:var(--faint);font-size:10.5px}
+  .kpis{display:grid;gap:12px}
+  .k3{grid-template-columns:repeat(3,1fr)}
+  .k4{grid-template-columns:repeat(4,1fr)}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:15px 17px 11px;
+    display:flex;flex-direction:column;min-height:150px;
+    transition:border-color .15s ease, box-shadow .15s ease}
+  .kpi:hover{border-color:#cbd5e1;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .kpi .l{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub)}
+  .kpi .l .sp{flex:1}
+  .kpi .v{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:4px 0 0}
+  .kpi .v small{font-size:13px;font-weight:550;color:var(--sub)}
+  .kpi .d{font-size:11px;color:var(--faint);margin-top:1px}
+  .kpi .spark{height:34px;margin-top:8px}
+  .charts{display:grid;grid-template-columns:1.12fr 1fr;gap:14px}
+  .chart .t{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px}
+  .chart .t .r{font-size:11px;color:var(--faint)}
+  .box{height:190px}
+  .layer-h{display:flex;align-items:baseline;gap:10px}
+  .layer-h .r{font-size:11px;color:var(--faint)}
+  .layer-h .st{font-size:11px;font-weight:700}
+  .st-wa-t{color:#b45309}.st-ok-t{color:#047857}.st-al-t{color:#b91c1c}
+  .tablewrap{overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-size:11.5px;font-weight:550;color:var(--sub);text-align:left;padding:7px 12px;
+    border-bottom:1px solid var(--line);white-space:nowrap;background:#fafafa}
+  td{padding:8px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  td.wrap{white-space:normal;line-height:1.5}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr:hover td{background:#f8fafc}
+  .fig{font-size:11px;color:var(--faint);line-height:1.6;padding:10px 2px 0}
+  .fig b{color:var(--txt)}
+  details{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:14px 20px}
+  summary{cursor:pointer;font-size:13px;font-weight:650}
+  details .inner{margin-top:12px}
+  .anchor{position:relative;padding:3px 0 8px}
+  .anchors .timeline{border-left:2px solid var(--line);margin:6px 0 0 4px;padding-left:16px}
+  .anchor::before{content:"";position:absolute;left:-21.5px;top:9px;width:8px;height:8px;
+    border-radius:50%;background:#fff;border:2px solid var(--accent)}
+  .anchor .ad{color:var(--sub);font-size:11px;font-variant-numeric:tabular-nums;margin-right:8px}
+  .anchor .atext{font-size:12.5px}
+  .anchor .asrc{color:var(--faint);font-size:10.5px;margin-left:6px}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="logo">AI 需求监控 · 信号板</span>
+  <span class="tag">现象统计 · 人做判读</span>
+  <span class="gen">数据时点 <span id="gen">—</span> · ⌂ <a href="http://127.0.0.1:8800/">总入口</a> · 姊妹板:存储 <a href="http://127.0.0.1:8790/">8790</a> · MLCC <a href="http://127.0.0.1:8792/">8792</a> · 电子布 <a href="http://127.0.0.1:8793/">8793</a></span>
+</div>
+<div class="wrap">
+
+  <div class="card concl">
+    <div class="lights">
+      <div class="lg"><span class="bulb amber" id="bulbA"></span><span>A</span></div>
+      <div class="lg"><span class="bulb amber" id="bulbB"></span><span>B</span></div>
+      <div class="lg"><span class="bulb green" id="bulbC"></span><span>C</span></div>
+      <span class="verdict" id="verdict">—</span>
+    </div>
+    <div class="drv" id="drv">—</div>
+    <div class="ok-note">三层均正常时此处显示「✓ 三层均无异常 · 距上次复核 N 天」</div>
+    <div class="meta" id="cmeta">—</div>
+  </div>
+
+  <div class="card comp">
+    <div>
+      <div class="n num" id="total">—<small> /100</small></div>
+      <div class="lbl" style="margin-top:4px">AI 需求压力读数<br>加权现象 · 非预测</div>
+    </div>
+    <div style="flex:1.2">
+      <div class="thermo"><i id="thermoFill" style="width:0%"></i><u title="行动阈值 70"></u></div>
+      <div class="scale"><span>0 正常</span><span>40 观察</span><span>70 复核</span><span>100 行动</span></div>
+    </div>
+    <div class="tiers" id="tiers"></div>
+    <div class="fire">
+      <b>读法</b><br>
+      单层触发 = 黄;同层两项或跨层一项 = 橙;<b>跨层共振 = 红,行动由人决定</b><br>
+      <span class="s">机器只统计现象,不输出退出概率 · 实现层(B4)仍绿说明第一段迁移未结束</span>
+    </div>
+  </div>
+
+  <div class="layer-h">
+    <span class="sect">A · 定价行为</span>
+    <span class="r">日频自动 · 新浪美股 · 权重 45%</span>
+    <span class="st" id="stA">—</span>
+  </div>
+  <div class="card">
+    <div class="kpis k3">
+      <div class="kpi">
+        <div class="l"><span>A1 硬件贝塔篮子回撤</span><span class="sp"></span><span class="wt">20%</span></div>
+        <div class="v num" id="v_a1">—</div>
+        <div class="d" id="d_a1">—</div>
+        <div class="spark" id="sp_a1"></div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>A2 软件/半导体比价</span><span class="sp"></span><span class="wt">15%</span></div>
+        <div class="v num" id="v_a2">—</div>
+        <div class="d" id="d_a2">—</div>
+        <div class="spark" id="sp_a2"></div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>A3 利好弹性衰减</span><span class="sp"></span><span class="wt">10%</span></div>
+        <div class="v num" style="font-size:17px">待事件表</div>
+        <div class="d">需人工登记事件日(capex 上修/大单),事件表建好后启用 · 当前不计入层分</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer-h">
+    <span class="sect">B · 增长质量</span>
+    <span class="r">季频半自动 · SEC XBRL 机读 + dc.py + 台账 · 权重 40%</span>
+    <span class="st" id="stB">—</span>
+  </div>
+  <div class="card">
+    <div class="kpis k4">
+      <div class="kpi">
+        <div class="l"><span>B1 capex 二阶导</span><span class="sp"></span><span class="wt">15%</span></div>
+        <div class="v num" id="v_b1">—</div>
+        <div class="d" id="d_b1">—</div>
+        <div class="spark" id="sp_b1"></div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>B2 capex/OCF</span><span class="sp"></span><span class="wt">15%</span></div>
+        <div class="v num" id="v_b2">—</div>
+        <div class="d" id="d_b2">—</div>
+        <div class="spark" id="sp_b2"></div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>B3 盈利贡献集中度</span><span class="sp"></span><span class="wt">5%</span></div>
+        <div class="v num">≈50<small>%</small></div>
+        <div class="d">AI 占标普 500 盈利增长 · 高盛口径 · 台账人工</div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>B4 DC 收入 YoY</span><span class="sp"></span><span class="wt">5%</span></div>
+        <div class="v num" id="v_b4">—</div>
+        <div class="d" id="d_b4">—</div>
+        <div class="spark" id="sp_b4"></div>
+      </div>
+    </div>
+    <div class="charts" style="margin-top:14px">
+      <div class="chart">
+        <div class="t"><span style="font-size:11.5px;color:var(--sub)">四大 CSP capex 同比增速</span>
+          <span class="r">二阶导 = 柱高差 · 高盛 9-23(台账)</span></div>
+        <div class="box" id="ch_capex"></div>
+      </div>
+      <div class="chart">
+        <div class="t"><span style="font-size:11.5px;color:var(--sub)">WDC:价格先杀实例(行业利润最好时)</span>
+          <span class="r num" id="wdc_dd" style="color:var(--up);font-weight:650">—</span></div>
+        <div class="box" id="ch_wdc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer-h">
+    <span class="sect">C · 结构现象</span>
+    <span class="r">事件/月频 · 人工台账 · 权重 15% · v1 基线正常,台账未建自动观测</span>
+    <span class="st" id="stC">—</span>
+  </div>
+  <div class="card">
+    <div class="kpis k3">
+      <div class="kpi">
+        <div class="l"><span>C1 合同成色</span><span class="sp"></span><span class="wt">5%</span></div>
+        <div class="v num" style="font-size:19px">LTA 锁量→锁价翻转</div>
+        <div class="d">见顶第一信号 · 当前未触发(人工事件表 v2 接入)</div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>C2 边际买家分化</span><span class="sp"></span><span class="wt">5%</span></div>
+        <div class="v num" style="font-size:19px">四大 CSP 指引</div>
+        <div class="d">首家下调 = 共识破裂前兆 · 台账 csp_ledger 跟踪</div>
+      </div>
+      <div class="kpi">
+        <div class="l"><span>C3 金融化计数</span><span class="sp"></span><span class="wt">5%</span></div>
+        <div class="v num" style="font-size:19px;color:var(--wa)">2 项</div>
+        <div class="d">GPU 租赁市场 · 算力合约(指数化未现)· 月度人工盘点</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h"><h2>二线 · 需求实现 — 芯片厂数据中心收入</h2>
+      <span class="hint">SEC 8-K EX-99.1 机读,L1 零转述 · YoY 存原文百分比不重算</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Ticker</th><th>财报期</th><th>口径</th><th class="num">收入($M)</th><th class="num">YoY</th><th class="wrap">原文摘录</th></tr></thead>
+        <tbody id="dcBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h"><h2>证据锚点时间线</h2>
+      <span class="hint">研报口径预测值非观测值 · 缺口/交期等预测数字是研报口径而非现观测值 · 与上方状态矩阵分离</span></div>
+    <div class="anchors">
+      <div class="timeline" id="anchorLine"></div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>日期</th><th>类别</th><th>品目</th><th>数值/事实(原文)</th><th>口径</th><th>出处</th></tr></thead>
+          <tbody id="anchorBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h"><h2>一线 · CSP capex 台账</h2>
+      <span class="hint">csp_ledger.csv · basis 四类口径(event/period/state/calendar)· 日历行必须在未来 · 下一个数据点:10 月底四家 Q3 财报</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>日期</th><th>basis</th><th>内容</th><th>出处</th></tr></thead>
+        <tbody id="cspBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <details>
+    <summary>口径说明 · 审计(点开核对)</summary>
+    <div style="padding:10px 2px;font-size:12px;color:var(--sub);line-height:1.8" id="caliberBody"></div>
+  </details>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

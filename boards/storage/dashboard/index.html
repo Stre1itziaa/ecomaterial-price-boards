@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>存储价格趋势看板</title>
+<script src="lightweight-charts.standalone.production.js"></script>
+<script src="echarts.min.js"></script>
+<script src="data.js"></script>
+<style>
+  /* ============ 全站设计系统 v1(boards/_shared/design-system.md) ============ */
+  :root {
+    --bg:#fafafa; --panel:#ffffff; --panel2:#f4f4f5; --border:#e5e5e5; --border-soft:#f4f4f5;
+    --text:#18181b; --muted:#737373; --faint:rgba(24,24,27,.45);
+    --accent:#4f46e5; --blue:#4f46e5;
+    --up:#dc2626; --down:#059669; --flat:#737373; --warn:#d97706;
+    --row-hover:#f4f4f5;
+    --r-card:12px; --r-btn:8px; --r-pill:999px;
+    --s-card:0 1px 2px rgba(0,0,0,.04);
+    --s-hover:0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.08);
+    --ease:cubic-bezier(.215,.61,.355,1); --t-fast:.12s; --t-mid:.18s;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: light; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+  }
+  .num, td.num, .kpi .v, .chg, .badge, .rangebar, .spark, .chip, .datecell { font-variant-numeric: tabular-nums; }
+
+  /* ---- 顶栏(全站统一 §3.1) ---- */
+  .topbar { height:52px; background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 24px; gap:12px; }
+  .topbar .logo { font-size:15px; font-weight:700; letter-spacing:-.01em; }
+  .topbar .env { font-size:11px; color:var(--muted); border:1px solid var(--border);
+    padding:1px 8px; border-radius:var(--r-pill); }
+  .topbar .gen { margin-left:auto; }
+  .topbar .home { font-size:12px; color:var(--muted); text-decoration:none;
+    transition:color var(--t-fast) var(--ease); }
+  .topbar .home:hover { color:var(--blue); }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 24px 12px;
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  header h1 em { font-style: normal; color: var(--accent); }
+  header .asof { color: var(--muted); font-size: 12px; }
+  header .asof b { color: var(--text); font-weight: 600; }
+  header .spacer { flex: 1; }
+  .lamp { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+          border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 11px;
+          cursor:pointer; background:var(--panel); color:var(--muted);
+          transition:border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .lamp:hover { color: var(--text); border-color:#d4d4d8; }
+  .lamp i { width: 7px; height: 7px; border-radius: 50%; }
+  .lamp.ok i { background: #10b981; }
+  .lamp.warn i { background: var(--warn); }
+  .lamp.error i { background: var(--up); }
+  .src-pill { font-size: 11px; color: var(--muted); border: 1px solid var(--border);
+              border-radius: var(--r-pill); padding: 2px 10px; background:var(--panel); }
+
+  /* ---- KPI 条 ---- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px; padding: 14px 24px 8px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-card);
+         padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 2px;
+         box-shadow: var(--s-card);
+         transition: box-shadow var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease); }
+  .kpi:hover { box-shadow: var(--s-hover); border-color:#d4d4d8; }
+  .kpi .l { font-size: 10.5px; font-weight: 600; color: var(--muted); }
+  .kpi .v { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .kpi .v small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+  .kpi .d { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .kpi .d .spark { margin-left: auto; }
+  .chg.up { color: var(--up); } .chg.down { color: var(--down); } .chg.flat { color: var(--flat); }
+
+  /* ---- 异动条 ---- */
+  .movers { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: 0 24px 10px; padding: 8px 14px;
+            background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-card);
+            box-shadow: var(--s-card); }
+  .movers .mt { font-size: 11px; font-weight: 700; color: var(--warn); }
+  .chip {
+    font-size: 12px; border: 1px solid var(--border); background: var(--panel);
+    border-radius: var(--r-btn); padding: 3px 11px; cursor: pointer; display: inline-flex; gap: 6px;
+    align-items: center;
+    transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  }
+  .chip:hover { border-color: var(--accent); background: var(--panel2); }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .chip .z { color: var(--faint); font-size: 11px; }
+  .hint-small { color: var(--faint); font-size: 11px; }
+
+  /* ---- 布局 ---- */
+  .layout { display: grid; grid-template-columns: 292px minmax(0, 1fr); gap: 12px; padding: 10px 24px 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-card);
+           box-shadow: var(--s-card);
+           transition: box-shadow var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease); }
+  .panel:hover { box-shadow: var(--s-hover); border-color:#d4d4d8; }
+  .panel-head { display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+                border-bottom: 1px solid var(--border-soft); flex-wrap: wrap; }
+  .panel-head h3 { font-size: 13.5px; font-weight: 600; }
+  .panel-head .hint { color: var(--faint); font-size: 11.5px; }
+
+  /* ---- 侧栏 ---- */
+  aside { padding: 12px; height: calc(100vh - 300px); min-height: 380px;
+          overflow-y: auto; position: sticky; top: 10px; }
+  aside .toolbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  aside .toolbar input { flex: 1; min-width: 90px; background: var(--panel);
+    border: 1px solid var(--border); color: var(--text); border-radius: var(--r-btn);
+    padding: 6px 9px; font-size: 12px; outline: none;
+    transition: border-color var(--t-fast) var(--ease); }
+  aside .toolbar input:focus { border-color: var(--accent); }
+  .btn { background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+         border-radius: var(--r-btn); padding: 5px 9px; font-size: 12px; cursor: pointer; white-space: nowrap;
+         transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .btn:hover { color: var(--text); border-color:#d4d4d8; }
+  .btn.on { color: var(--blue-dk, #4338ca); border-color: var(--accent); background: #eef2ff; }
+  .grp-src { margin: 12px 0 4px; padding: 3px 8px; font-size: 10.5px; font-weight: 700;
+             color: var(--muted); }
+  .grp-src:first-child { margin-top: 0; }
+  .grp { margin-bottom: 6px; }
+  .grp .gtitle { color: var(--muted); font-size: 11.5px; font-weight: 600; padding: 5px 6px;
+    display: flex; justify-content: space-between; user-select: none; }
+  .grp .gtitle:hover { color: var(--text); }
+  .grp .gtitle .cnt { color: var(--faint); font-weight: 400; }
+  .item { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
+  .item:hover { background: var(--panel2); }
+  .item input { accent-color: var(--accent); cursor: pointer; flex: none; }
+  .item .nm { flex: 1; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 11px; border-radius: var(--r-pill); padding: 1px 7px; }
+  .badge.up { color: #b91c1c; background: #fee2e2; }
+  .badge.down { color: #047857; background: #d1fae5; }
+  .badge.flat { color: var(--muted); background: var(--panel2); }
+  details.tier2 { margin-top: 10px; }
+  details.tier2 summary { color: var(--muted); font-size: 11.5px; cursor: pointer;
+    padding: 5px 6px; user-select: none; }
+  details.tier2 summary:hover { color: var(--text); }
+
+  /* ---- 图表 ---- */
+  main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .chart-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-btn); overflow: hidden; }
+  .seg button { background: transparent; border: none; color: var(--muted); padding: 5px 12px;
+    font-size: 12px; cursor: pointer; border-right: 1px solid var(--border);
+    transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .seg button.dim { opacity: .35; }
+  #normNote { display: none; margin: 0 16px 4px; font-size: 11.5px; color: var(--warn); }
+  #chart { width: 100%; height: 430px; }
+
+  /* ---- 明细表 ---- */
+  .tablewrap { max-height: 520px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px;
+       position: sticky; top: 0; background: #fafafa; z-index: 2;
+       cursor: pointer; user-select: none; }
+  th:hover { color: var(--text); }
+  th .arr { color: var(--accent); margin-left: 3px; }
+  th.no-sort { cursor: default; }
+  td.num, th.num { text-align: right; }
+  tr.sec td { color: var(--muted); font-size: 11px; font-weight: 700; background: var(--panel2);
+    padding: 5px 12px; }
+  tbody tr.prow { cursor: pointer; }
+  tbody tr.prow:hover { background: var(--row-hover); }
+  tbody tr.prow.focused { background: #eef2ff; box-shadow: inset 2px 0 0 var(--accent); }
+  .price { font-weight: 600; }
+  .basis { font-size: 10px; color: var(--faint); border: 1px solid var(--border);
+           border-radius: var(--r-pill); padding: 0 5px; margin-left: 4px; }
+  .baseline { color: var(--faint); font-size: 10.5px; }
+  .rangebar { position: relative; width: 104px; height: 4px; border-radius: 2px;
+              background: #e4e4e7; display: inline-block; vertical-align: middle; }
+  .rangebar i { position: absolute; top: -2.5px; width: 3px; height: 9px;
+                border-radius: 1.5px; background: var(--text); }
+  .spark { display: block; }
+  .src-tag { font-size: 10px; font-weight: 700; padding: 1.5px 7px; border-radius: var(--r-pill); }
+  .src-cfm { color: #b45309; background: #fffbeb; }
+  .src-tf  { color: #0369a1; background: #f0f9ff; }
+  .src-spd { color: #6d28d9; background: #f5f3ff; }
+  .sibnav a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--border); }
+  .sibnav a:hover { color: var(--accent); }
+  .freq-tag { font-size: 10px; color: var(--muted); border: 1px solid var(--border);
+              border-radius: var(--r-pill); padding: 0 5px; margin-left: 4px; }
+  .freq-tag.stale { color: var(--warn); border-color: rgba(217,119,6,.5); }
+  .datecell { color: var(--muted); font-size: 11.5px; }
+  .datecell.stale { color: var(--warn); }
+
+  /* ---- 口径折叠区 ---- */
+  footer { color: var(--faint); font-size: 11.5px; padding: 0 24px 22px; line-height: 1.8; }
+  footer details { border: 1px solid var(--border-soft); border-radius: var(--r-card);
+                   padding: 8px 14px; margin-top: 10px; background: var(--panel); }
+  footer summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+  footer li { margin: 2px 0 2px 18px; }
+  .audit-pass { color: var(--down); } .audit-fail { color: var(--up); }
+  code { background: var(--panel2); padding: 1px 5px; border-radius: 5px; font-size: 11px; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  .figcap { color:var(--faint); font-size:11.5px; padding:7px 16px 2px; border-top:1px solid var(--border-soft); margin-top:4px; line-height:1.5; }
+  .figcap b { color:var(--text); }
+  #chart #tv-attr-logo { display:none !important; }
+
+  /* ---- KPI 现象卡 sparkline(v4)+ 异动强度边 ---- */
+  .kspark { height: 34px; width: 100%; margin-top: 8px; }
+  .chip-hot { border-color: #ef4444 !important; background: #fef2f2 !important; }
+  .chip-warm { border-color: #f59e0b !important; background: #fffbeb !important; }
+
+  /* ---- 结论横幅(v4 信号板规格,2026-10-11) ---- */
+  .concl { display:flex; align-items:center; gap:22px; padding:16px 24px;
+           background:var(--panel); border:1px solid var(--border);
+           border-radius:var(--r-card); box-shadow:var(--s-card);
+           margin:12px 24px 0; }
+  .concl .lights { display:flex; gap:14px; align-items:center; }
+  .lg { display:flex; flex-direction:column; align-items:center; gap:4px;
+        font-size:11.5px; font-weight:650; color:var(--text); }
+  .bulb { width:26px; height:26px; border-radius:50%; display:block; }
+  .bulb.green { background:#10b981; box-shadow:0 0 0 4px #d1fae5; }
+  .bulb.amber { background:#f59e0b; box-shadow:0 0 0 4px #fef3c7; }
+  .bulb.red { background:#ef4444; box-shadow:0 0 0 4px #fee2e2, 0 0 14px rgba(239,68,68,.45); }
+  .concl .verdict { font-size:17px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; }
+  .concl .drv { font-size:12.5px; line-height:1.6; border-left:2px solid var(--border);
+                padding-left:14px; flex:1; }
+  .concl .drv b { font-weight:650; }
+  .concl .meta { font-size:11px; color:var(--faint); text-align:right; line-height:1.6;
+                 border-left:1px solid var(--border); padding-left:16px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">存储价格趋势看板</div>
+  <div class="env">价格追踪 · 每日 18:40</div>
+  <div class="gen"><a class="home" href="http://127.0.0.1:8800/" target="_blank">⌂ 总入口</a></div>
+</div>
+<header>
+  <h1>DRAM / NAND / SSD <em>·</em> 双源零售与合约</h1>
+  <span class="asof">数据截止 <b id="asof">—</b> · 生成于 <span id="gen">—</span></span>
+  <span class="spacer"></span>
+  <span class="lamp" id="healthLamp" title="采集健康巡检"><i></i><span id="healthTxt">—</span></span>
+  <span class="src-pill">CFM 闪存市场</span>
+  <span class="src-pill">TrendForce 集邦咨询</span>
+</header>
+
+<div class="concl" id="conclBanner">
+  <div class="lights">
+    <div class="lg" title="最新日相对 13 周窗的 z 分异动(与异动条同源);≥3 项 |z|≥2 或任一 |z|≥3 时点亮"><span class="bulb green" id="bulbA"></span><span>A 行情</span></div>
+    <div class="lg" title="daily/weekly 序列超期巡检(tracker 按 1.5×/3× 周期分 warn/error);月/季更序列不参与"><span class="bulb green" id="bulbB"></span><span>B 覆盖</span></div>
+    <div class="lg" title="audit FAIL 或采集 status=error 时点亮;warn 级陈旧归 B 层,不重复计"><span class="bulb green" id="bulbC"></span><span>C 巡检</span></div>
+    <span class="verdict" id="verdictTxt">计算中…</span>
+  </div>
+  <div class="drv" id="drvTxt">—</div>
+  <div class="meta" id="metaTxt">—</div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div class="movers" id="movers"></div>
+
+<div class="layout">
+  <aside class="panel">
+    <div class="toolbar">
+      <input id="filter" placeholder="搜索产品…">
+      <button class="btn" id="core">核心</button>
+      <button class="btn" id="idx">指数</button>
+      <button class="btn" id="all">全选</button>
+      <button class="btn" id="none">清空</button>
+    </div>
+    <div id="tree"></div>
+    <details class="tier2" id="tier2box">
+      <summary>更多品种（二梯队 · 未审计入榜）</summary>
+      <div id="tier2list"></div>
+    </details>
+  </aside>
+
+  <main>
+    <div class="panel">
+      <div class="panel-head chart-head">
+        <h3>价格走势</h3>
+        <span class="seg" id="range">
+          <button data-r="7">1周</button><button data-r="30">1月</button>
+          <button data-r="90">3月</button><button data-r="0" class="on">全部</button>
+        </span>
+        <span class="seg" id="mode">
+          <button data-m="price" class="on">价格</button>
+          <button data-m="norm">归一化</button>
+        </span>
+        <span class="seg" id="scale">
+          <button data-s="linear">线性</button>
+          <button data-s="log" class="on">对数</button>
+        </span>
+        <span class="hint" id="chartTip"></span>
+      </div>
+      <div id="normNote">⚠ 归一化各序列以自身首点=100，基期不同（见提示括号内日期），基期差超 30 天时斜率对比仅供参考。</div>
+      <div id="winNote" style="display:none; margin:0 16px 4px; font-size:11.5px; color:var(--warn)"></div>
+      <div id="chart"></div>
+      <div class="figcap"><b>图 1</b> | 存储现货与合约价格走势(默认对数轴,可切换归一化)。数据:CFM 闪存市场评估价;TrendForce 盘均/合约口径,两源独立不混算。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>全品类行情明细</h3>
+        <span class="hint">点击表头排序 · 点行聚焦图表（Esc 退出） · 涨红跌绿配 ▲▼</span>
+        <span style="flex:1"></span>
+        <span id="widthStrip" style="display:inline-flex;gap:8px;align-items:center"></span>
+        <button class="btn" id="csvBtn">导出 CSV</button>
+        <button class="btn" id="reportBtn">复制晨报</button>
+      </div>
+      <div class="tablewrap">
+        <table id="snap">
+          <thead><tr>
+            <th data-k="name">产品</th>
+            <th class="num" data-k="price">最新价</th>
+            <th class="num" data-k="chg">涨跌幅</th>
+            <th class="num" data-k="w4">4周动量</th>
+            <th class="no-sort">13周区间</th>
+            <th class="no-sort">走势</th>
+            <th data-k="src">来源</th>
+            <th data-k="date">数据日期</th>
+          </tr></thead>
+          <tbody id="snapBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <details id="caliber">
+    <summary>口径说明 · 审计与巡检（点开核对）</summary>
+    <div id="caliberBody"></div>
+  </details>
+  <div id="foot" style="margin-top:8px"></div>
+</footer>
+<script src="app.js"></script>
+<script>
+/* 结论横幅(v4 规格,rev2):A 行情异动(与 app.js z 分同源) / B 覆盖(按 tracker 频率分档的 level 字段) /
+   C 巡检(audit FAIL 或采集 error 才红;warn 归 B 层)。
+   抽为 window.__renderConcl(data) 以便红灯路径 mock 验证。机器只统计现象,行动由人决定。 */
+(function () {
+  function renderConcl(D) {
+    D = D || window.STORAGE_DATA; if (!D) return;
+    const today = (D.generatedAt || "").slice(0, 10);
+    /* A 行情:复用 app.js 的 13 周 z 分(同源,勿在此重复实现) */
+    const movers = window.__MOVERS_Z || [];
+    const nZ2 = movers.filter(m => Math.abs(m.z) >= 2).length;
+    const nZ3 = movers.filter(m => Math.abs(m.z) >= 3).length;
+    const top = movers.slice(0, 2).map(m =>
+      `${m.p.name.length > 18 ? m.p.name.slice(0, 18) + "…" : m.p.name} z=${m.z.toFixed(1)}`);
+    const lightA = nZ3 > 0 ? "red" : (nZ2 > 0 ? "amber" : "green");
+    /* B 覆盖:tracker 已按 freq 分档(daily/weekly 超 1.5×=warn 超 3×=error;月/季更不巡检) */
+    const stale = (D.health || {}).stale || [];
+    const nErr = stale.filter(s => s.level === "error").length;
+    const nWarn = stale.filter(s => s.level === "warn").length;
+    const maxAge = stale.length ? Math.max(...stale.map(s => s.age)) : 0;
+    const lightB = nErr > 0 ? "red" : (nWarn > 0 ? "amber" : "green");
+    /* C 巡检:audit FAIL 或采集 error(status=error)才红;warn 属 B 层,不重复计 */
+    const hStatus = (D.health || {}).status || "ok";
+    const auditPass = !!(D.audit && D.audit.pass);
+    const lightC = (!auditPass || hStatus === "error") ? "red" : "green";
+    /* 上色 */
+    const set = (id, c) => { const el = document.getElementById(id); el.className = "bulb " + c; };
+    set("bulbA", lightA); set("bulbB", lightB); set("bulbC", lightC);
+    /* 结论 */
+    const worst = [lightA, lightB, lightC];
+    let verdict;
+    if (worst.includes("red")) verdict = "存在红色行动信号";
+    else if (worst.includes("amber")) verdict = "局部观察中 · 无红色行动信号";
+    else verdict = "✓ 三层均无异常";
+    const vt = document.getElementById("verdictTxt");
+    vt.textContent = verdict;
+    vt.style.color = worst.includes("red") ? "#b91c1c" : worst.includes("amber") ? "#b45309" : "#047857";
+    /* 驱动项 */
+    const drv = [];
+    drv.push(`<b>A 行情:</b>异动 ${nZ2} 项(|z|≥2),强异动 ${nZ3} 项(|z|≥3)${top.length ? " — " + top.join("、") : ""}`);
+    if (lightB !== "green")
+      drv.push(`<b>B 覆盖:</b>超期序列 warn ${nWarn} / error ${nErr},最长 ${maxAge} 天(tracker 按频率分档)`);
+    else drv.push(`<b>B 覆盖:</b>daily/weekly 序列全部新鲜`);
+    drv.push(`<b>C 巡检:</b>审计 ${auditPass ? "PASS" : "FAIL"} ${D.audit ? D.audit.n : "-"} 项 · 采集 ${hStatus}`);
+    document.getElementById("drvTxt").innerHTML = drv.join("<br>");
+    const none = verdict.indexOf("均无异常") >= 0;
+    document.getElementById("metaTxt").innerHTML =
+      `数据截止 ${today} · 每日 18:40 自动更新<br>` + (none ? "" : "明细见下方 KPI 与异动条");
+  }
+  window.__renderConcl = renderConcl;
+  renderConcl(window.STORAGE_DATA);
+})();
+</script>
+</body>
+</html>

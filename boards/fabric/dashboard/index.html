@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电子布价格趋势看板</title>
+<script src="echarts.min.js"></script>
+<script src="lightweight-charts.standalone.production.js"></script>
+<script src="data.js"></script>
+<style>
+  :root {
+  --bg:#fafafa; --panel:#ffffff; --panel2:#f4f4f5; --border:#e5e5e5; --border-soft:#f4f4f5;
+  --text:#18181b; --muted:#737373; --faint:rgba(24,24,27,.45); --accent:#4f46e5; --blue:#4f46e5;
+  --up:#dc2626; --down:#059669; --flat:#737373; --warn:#d97706;
+  --row-hover:#f4f4f5;
+  --r-card:12px; --r-btn:8px; --r-pill:999px;
+  --s-card:0 1px 2px rgba(0,0,0,.04);
+  --s-hover:0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.08);
+  --ease:cubic-bezier(.215,.61,.355,1); --t-fast:.12s; --t-mid:.18s;
+  --num: ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { color-scheme:light; }
+  body { background:var(--bg); color:var(--text);
+    font-family:"Times New Roman","Noto Serif SC","Source Han Serif SC",SimSun,serif;
+    font-size:13.5px; line-height:1.5; }
+  .num, td.num, .kpi .v, .chg, .badge, .datecell { font-variant-numeric:tabular-nums; }
+
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:14px 24px 12px; border-bottom:1px solid var(--border-soft);
+    background:linear-gradient(180deg,#f2f2ee 0%,var(--bg) 100%); }
+  header h1 { font-size:19px; font-weight:700; letter-spacing:.5px; }
+  header h1 em { font-style:normal; color:var(--accent); }
+  header .asof { color:var(--muted); font-size:12px; }
+  header .asof b { color:var(--text); font-weight:600; }
+  header .spacer { flex:1; }
+  .lamp { display:inline-flex; align-items:center; gap:6px; font-size:12px;
+    border:1px solid var(--border); border-radius:3px; padding:3px 11px; cursor:pointer; }
+  .lamp i { width:8px; height:8px; border-radius:50%; }
+  .lamp.ok i { background:#2ca02c; ; }
+  .lamp.warn i { background:var(--warn); box-shadow:0 0 6px rgba(184,134,11,.8); }
+  .src-pill { font-size:11px; color:var(--muted); border:1px solid var(--border);
+    border-radius:3px; padding:2px 10px; }
+
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:10px; padding:14px 24px 8px; }
+  .kpi { background:var(--panel); border:1px solid var(--border); border-radius:2px;
+    padding:12px 14px 10px; display:flex; flex-direction:column; gap:2px; }
+  .kpi .l { font-size:10.5px; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.8px; }
+  .kpi .v { font-family:var(--num); font-size:25px; font-weight:700; letter-spacing:-.5px; }
+  .kpi .v small { font-size:14px; font-weight:600; color:var(--muted); margin-left:3px; }
+  .kpi .d { font-size:12px; color:var(--muted); display:flex; align-items:center;
+    gap:8px; flex-wrap:wrap; }
+  .chg.up { color:var(--up); } .chg.down { color:var(--down); } .chg.flat { color:var(--flat); }
+
+  .movers { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin:0 24px 10px; padding:8px 14px; background:var(--panel);
+    border:1px solid var(--border); border-radius:2px; }
+  .movers .mt { font-size:11px; font-weight:700; color:var(--warn);
+    text-transform:uppercase; letter-spacing:1px; }
+  .chip { font-size:12px; border:1px solid var(--border); background:var(--panel2);
+    border-radius:3px; padding:3px 11px; cursor:pointer; display:inline-flex;
+    gap:6px; align-items:center; font-variant-numeric:tabular-nums; }
+  .chip:hover { border-color:var(--accent); }
+  .hint-small { color:var(--faint); font-size:11px; }
+
+  /* ---- 历史锚点时间线 ---- */
+  .anchors { margin:0 24px 10px; }
+  .anchors .timeline { border-left:2px solid var(--border); margin:6px 0 0 4px; padding-left:16px; }
+  .anchor { position:relative; padding:3px 0 7px; }
+  .anchor::before { content:""; position:absolute; left:-21.5px; top:10px; width:9px; height:9px;
+    border-radius:50%; background:var(--panel); border:2px solid var(--accent); }
+  .anchor.spot::before { border-color:var(--warn); }
+  .anchor .ad { color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+  .anchor .acat { font-size:10px; font-weight:700; letter-spacing:.5px; padding:1px 6px;
+    border-radius:4px; margin:0 6px; }
+  .grade { font-size:10px; font-weight:700; letter-spacing:.4px; padding:1.5px 6px;
+    border-radius:4px; white-space:nowrap; margin-right:4px; vertical-align:1px; }
+  .grade-hi  { color:#047857; background:#d1fae5; }
+  .grade-mid { color:#4338ca; background:#eef2ff; }
+  .grade-low { color:#b45309; background:#fffbeb; }
+  .acat-spot { color:#d9822b; background:rgba(232,176,75,.13); }
+  .acat-oem  { color:#4878d0; background:rgba(143,168,240,.13); }
+  .acat-fin  { color:#2ca02c; background:rgba(44,160,44,.15); }
+  .acat-lead { color:#9467bd; background:rgba(148,103,189,.13); }
+  .anchor .atext { font-size:12.5px; }
+  .anchor .asrc { color:var(--faint); font-size:10.5px; margin-left:6px; }
+
+  .layout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:12px; padding:10px 24px 20px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:2px; }
+  .panel-head { display:flex; align-items:center; gap:10px; padding:11px 16px;
+    border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
+  .panel-head h3 { font-size:13.5px; font-weight:700; letter-spacing:.3px; }
+  .panel-head .hint { color:var(--faint); font-size:11.5px; }
+
+  aside { padding:12px; height:calc(100vh - 300px); min-height:380px;
+    overflow-y:auto; position:sticky; top:10px; }
+  aside .toolbar { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .btn { background:var(--panel2); border:1px solid var(--border); color:var(--muted);
+    border-radius:7px; padding:5px 9px; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .btn:hover { color:var(--text); border-color:var(--accent); }
+  .btn.on { color:var(--text); border-color:var(--accent); }
+  .grp .gtitle { color:var(--muted); font-size:11.5px; font-weight:600; padding:5px 6px;
+    display:flex; justify-content:space-between; user-select:none; letter-spacing:.4px; }
+  .item { display:flex; align-items:center; gap:7px; padding:4px 6px; border-radius:6px; cursor:pointer; }
+  .item:hover { background:var(--panel2); }
+  .item input { accent-color:var(--accent); cursor:pointer; flex:none; }
+  .item .nm { flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  main { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  #chart { width:100%; height:420px; }
+  .tablewrap { max-height:520px; overflow:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { padding:7px 12px; text-align:left; border-bottom:1px solid var(--border-soft); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase;
+    letter-spacing:.7px; position:sticky; top:0; background:var(--panel); z-index:2;
+    cursor:pointer; user-select:none; }
+  th:hover { color:var(--text); }
+  th .arr { color:var(--accent); margin-left:3px; }
+  td.num, th.num { text-align:right; }
+  td.num { font-family:var(--num); }
+  td.wrap { white-space:normal; min-width:280px; line-height:1.45; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .tag { font-size:10px; font-weight:700; letter-spacing:.5px; padding:1.5px 7px; border-radius:4px; white-space:nowrap; }
+  .tag-重要-调价 { color:#d9822b; background:rgba(232,176,75,.14); }
+  .tag-重要-经营数据 { color:#2ca02c; background:rgba(44,160,44,.15); }
+  .tag-重要-定期报告 { color:#4878d0; background:rgba(143,168,240,.14); }
+  .tag-重要-扩产 { color:#9467bd; background:rgba(148,103,189,.14); }
+  .tag-常规 { color:var(--muted); background:rgba(85,85,85,.12); }
+  .cal { font-size:10px; font-weight:700; letter-spacing:.4px; padding:1.5px 6px; border-radius:4px;
+    color:#17becf; background:rgba(23,190,207,.12); }
+  .datecell { color:var(--muted); font-size:11.5px; }
+  footer { color:var(--faint); font-size:11.5px; padding:0 24px 22px; line-height:1.8; }
+  footer details { border:1px solid var(--border-soft); border-radius:2px;
+    padding:8px 14px; margin-top:10px; background:var(--panel); }
+  footer summary { cursor:pointer; color:var(--muted); font-weight:600; }
+  footer li { margin:2px 0 2px 18px; }
+  .sibnav a { color: var(--muted, #555555); text-decoration: none; border-bottom: 1px dotted var(--border, #d5d5cf); }
+  .sibnav a:hover { color: #1f77b4; }
+
+  code { background:var(--panel2); padding:1px 5px; border-radius:3px; font-size:11px; }
+  ::-webkit-scrollbar { width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb { background:#c9c9c2; border-radius:5px; }
+  .figcap { color:#555; font-size:11.5px; padding:7px 16px 2px; border-top:1px solid #e8e8e3; margin-top:4px; line-height:1.5; }
+  .figcap b { color:#14171c; }
+  
+  /* ---- editorial v2: 正文无衬线,标题/图注衬线,画布分层 ---- */
+  body { font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+         color:#14171c; background:#f7f7f5; }
+  h1, h2, h3, .figcap, .figcap b { font-family:Georgia,"Times New Roman","Noto Serif SC","Source Han Serif SC",SimSun,serif; }
+  h1 { letter-spacing:.2px; font-weight:700; }
+  h3 { letter-spacing:.3px; font-weight:700; }
+  .figcap { color:#6b6b66; font-size:12px; font-style:italic; }
+  .figcap b { font-style:normal; color:#14171c; }
+  .kpi .v { font-family:Georgia,"Noto Serif SC","Source Han Serif SC",serif;
+            font-weight:600; letter-spacing:-.4px; }
+  /* 卡片:发丝边+软圆角,与画布分层 */
+  .panel, .kpi { border-color:#e7e7e2; border-radius:6px; }
+  /* 控件:安静底色,激活态=墨水描边(编辑部风,弃蓝框) */
+  .btn { background:#ffffff; border-color:#e3e3de; border-radius:6px; color:#6b6b66; }
+  .btn:hover { color:#14171c; border-color:#b4b4ae; }
+  .btn.on { color:#14171c; border-color:#14171c; background:#ffffff; }
+  .lamp, .src-pill { border-color:#e3e3de; background:#ffffff; color:#6b6b66; }
+  /* booktabs:表头粗黑线,行浅线 */
+  th { color:#6b6b66; letter-spacing:.8px; border-bottom:1.5px solid #3f3f3a; }
+  td { border-bottom:1px solid #eeeee9; }
+  /* 呼吸感 */
+  .kpis { gap:14px; }
+  .chip { border-color:#e3e3de; background:#ffffff; }
+  #b2bChart #tv-attr-logo { display:none !important; }
+
+  /* ---- 结论横幅(v4 四板对齐,2026-10-12 补) ---- */
+  .concl { display:flex; align-items:center; gap:22px; padding:16px 24px;
+           background:var(--panel); border:1px solid var(--border);
+           border-radius:var(--r-card); box-shadow:var(--s-card);
+           margin:12px 24px 0; }
+  .concl .lights { display:flex; gap:14px; align-items:center; }
+  .lg { display:flex; flex-direction:column; align-items:center; gap:4px;
+        font-size:11.5px; font-weight:650; color:var(--text); }
+  .bulb { width:26px; height:26px; border-radius:50%; display:block; }
+  .bulb.green { background:#10b981; box-shadow:0 0 0 4px #d1fae5; }
+  .bulb.amber { background:#f59e0b; box-shadow:0 0 0 4px #fef3c7; }
+  .bulb.red { background:#ef4444; box-shadow:0 0 0 4px #fee2e2, 0 0 14px rgba(239,68,68,.45); }
+  .concl .verdict { font-size:17px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; }
+  .concl .drv { font-size:12.5px; line-height:1.6; border-left:2px solid var(--border);
+                padding-left:14px; flex:1; }
+  .concl .drv b { font-weight:650; }
+  .concl .meta { font-size:11px; color:var(--faint); text-align:right; line-height:1.6;
+                 border-left:1px solid var(--border); padding-left:16px; }
+
+  /* ============ v3 全站设计系统覆盖(boards/_shared/design-system.md; 后写覆盖 editorial v2) ============ */
+  body{background:#fafafa;color:#18181b;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  h1,h2,h3,.figcap,.figcap b,.kpi .v{font-family:inherit}
+  h1{letter-spacing:-.01em}
+  h3{letter-spacing:0;font-weight:600}
+  .figcap{font-style:normal;color:rgba(24,24,27,.45);border-top-color:#f4f4f5}
+  .figcap b{font-style:normal;color:#18181b}
+  .kpi .v{letter-spacing:-.01em;font-weight:700}
+  .kpi .l{text-transform:none;letter-spacing:0}
+  .movers .mt{text-transform:none;letter-spacing:0}
+  th{text-transform:none;letter-spacing:0;font-size:12px;background:#fafafa;border-bottom:1px solid #e5e5e5}
+  td{border-bottom-color:#f4f4f5}
+  .panel,.kpi{border-radius:12px;border-color:#e5e5e5;box-shadow:0 1px 2px rgba(0,0,0,.04);
+    transition:box-shadow .18s cubic-bezier(.215,.61,.355,1),border-color .18s cubic-bezier(.215,.61,.355,1)}
+  .panel:hover,.kpi:hover{box-shadow:0 1px 2px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.08);border-color:#d4d4d8}
+  .movers{border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .chip{border-radius:8px;background:#fff}
+  .badge{border-radius:999px;padding:1px 7px}
+  .badge.up{color:#b91c1c;background:#fee2e2}
+  .badge.down{color:#047857;background:#d1fae5}
+  .badge.flat{color:#737373;background:#f4f4f5}
+  .btn{background:#fff;border-radius:8px;transition:border-color .12s cubic-bezier(.215,.61,.355,1),color .12s cubic-bezier(.215,.61,.355,1)}
+  .btn:hover{border-color:#d4d4d8}
+  .btn.on{color:#4338ca;border-color:#4f46e5;background:#eef2ff}
+  .lamp,.src-pill{border-radius:999px;background:#fff}
+  .lamp i{width:7px;height:7px}
+  .lamp.ok i{background:#10b981;box-shadow:none}
+  .lamp.warn i{background:#d97706;box-shadow:none}
+  .lamp.error i{background:#dc2626;box-shadow:none}
+  .grp-src{text-transform:none;letter-spacing:0;color:#737373}
+  tr.sec td{text-transform:none;letter-spacing:0;color:#737373}
+  tbody tr.prow:hover{background:#f4f4f5}
+  tbody tr.prow.focused{background:#eef2ff;box-shadow:inset 2px 0 0 #4f46e5}
+  td.num,th.num{font-family:inherit}
+  header{background:none;border-bottom:none}
+  .anchor::before{border-color:#4f46e5}
+  .anchor.spot::before{border-color:#d97706}
+  .acat-spot{color:#b45309;background:#fffbeb}
+  .acat-oem{color:#4338ca;background:#eef2ff}
+  .acat-lead{color:#6d28d9;background:#f5f3ff}
+  .item input{accent-color:#4f46e5}
+  .seg button{transition:background .12s cubic-bezier(.215,.61,.355,1),color .12s cubic-bezier(.215,.61,.355,1)}
+  ::-webkit-scrollbar-thumb{background:#d4d4d8}
+  /* ---- v3 统一顶栏 ---- */
+  .topbar{height:52px;background:#fff;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;padding:0 24px;gap:12px}
+  .topbar .logo{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .topbar .env{font-size:11px;color:#737373;border:1px solid #e5e5e5;padding:1px 8px;border-radius:999px}
+  .topbar .gen{margin-left:auto}
+  .topbar .home{font-size:12px;color:#737373;text-decoration:none;transition:color .12s cubic-bezier(.215,.61,.355,1)}
+  .topbar .home:hover{color:#4f46e5}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">电子布价格趋势看板</div>
+  <div class="env">价格追踪 · 每日 20:40</div>
+  <div class="gen"><a class="home" href="http://127.0.0.1:8800/" target="_blank">⌂ 总入口</a></div>
+</div>
+<header>
+  <h1>电子布价格趋势看板 <em>·</em> 厚布 / 薄布 / Low-Dk / 电子纱 / 铜箔</h1>
+  <span class="asof">锚点截止 <b id="asof">—</b> · 生成于 <span id="gen">—</span></span>
+  <span class="spacer"></span>
+  <span class="lamp" id="auditLamp"><i></i><span id="auditTxt">—</span></span>
+  <span class="src-pill">巨潮公告流 cninfo</span>
+  <span class="src-pill">新闻考古锚点</span>
+  <span class="src-pill">阿里国际站挂牌</span>
+  <span class="src-pill">周评方向层(周频)</span>
+</header>
+
+<div class="concl" id="conclBanner">
+  <div class="lights">
+    <div class="lg"><span class="bulb green" id="bulbA"></span><span>A 定价</span></div>
+    <div class="lg"><span class="bulb green" id="bulbB"></span><span>B 在线</span></div>
+    <div class="lg"><span class="bulb green" id="bulbC"></span><span>C 管线</span></div>
+    <span class="verdict" id="verdictTxt">计算中…</span>
+  </div>
+  <div class="drv" id="drvTxt">—</div>
+  <div class="meta" id="metaTxt">—</div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div class="movers" id="movers"></div>
+<div class="panel anchors" style="padding:10px 16px">
+  <div class="panel-head" style="padding:0 0 6px;border:none">
+    <h3>历史锚点 · 2026 涨价周期(新闻考古 + 财报披露,口径分列绝不混算)</h3>
+    <span class="hint">每条带出处;品类真实节奏=7628/G75/薄布 <b>月度调价</b>、FR-4 <b>调价函事件驱动</b>(见页脚)。
+    采样频率超过定价频率不产生新信息——月调品超 <b>35 天</b> 无新锚点才视为失联:<span id="anchorLag"></span></span>
+  </div>
+  <div class="timeline" id="anchorLine"></div>
+</div>
+
+<div class="layout">
+  <aside class="panel">
+    <div class="toolbar">
+      <span class="hint-small" style="padding:4px 2px">勾选口径系列入图</span>
+      <button class="btn" id="all">全选</button>
+      <button class="btn" id="none">清空</button>
+    </div>
+    <div id="tree"></div>
+  </aside>
+
+  <main>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>锚点主数值走势(左轴 ￥/米 · 右轴 元/吨)</h3>
+        <span class="hint" id="chartTip"></span>
+      </div>
+      <div id="chart"></div>
+      <div class="figcap"><b>图 1</b> | 价格锚点连线(仅同口径序列相连,跨口径不混算)。数据:新闻考古锚点,出处逐条可溯。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>B2B 挂牌价(阿里国际站 · 出口挂牌台阶线)</h3>
+        <span class="hint" id="b2bTip"></span>
+        <span style="flex:1"></span>
+        <span id="b2bChips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+      </div>
+      <div id="b2bChart" style="width:100%;height:300px"></div>
+      <div class="figcap"><b>图 2</b> | 阿里国际站 B2B 挂牌价台阶线(出口口径,日频)。2026-10-11 净化升级:排除建材级 E 玻璃纱(石膏加固/船用等),历史已按新规则重算,审计含口径哨兵。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>周评方向层(卓创/百川 · 周频)</h3>
+        <span class="hint" id="wkTip"></span>
+      </div>
+      <div class="tablewrap" style="max-height:280px">
+        <table id="wkTable">
+          <thead><tr>
+            <th data-k="date">周评期</th>
+            <th data-k="src">来源</th>
+            <th>周评标题(方向语义,点开原文)</th>
+            <th data-k="dir">电子纱/布方向</th>
+          </tr></thead>
+          <tbody id="wkBody"></tbody>
+        </table>
+      </div>
+      <div class="figcap"><b>表 1</b> | 玻纤周评标题=方向语义层,免费公开源直连抓取;标题无数字,不入价格连线,与锚点/B2B 层分列。带数字的周评转述走下方「待核验候选」通道。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>待核验锚点候选(搜狗微信扫描层 · 机器发现,人工定价)</h3>
+        <span class="hint" id="pendTip"></span>
+      </div>
+      <div class="tablewrap" style="max-height:300px">
+        <table id="pendTable">
+          <thead><tr>
+            <th data-k="pubDate">发布日</th>
+            <th>公众号</th>
+            <th>标题(点开原文)</th>
+            <th>命中品目</th>
+            <th class="wrap">正文数字片段(机器抽取,未经核验)</th>
+            <th data-k="status">状态</th>
+          </tr></thead>
+          <tbody id="pendBody"></tbody>
+        </table>
+      </div>
+      <div class="figcap"><b>表 2</b> | 免费世界的成交价数字以公众号转述卓创/百川周评的形态存在(周频)。本表由搜狗微信扫描自动发现,
+      <b>绝不自动入锚点</b>;人工核验后经 <code>tracker/news_anchors.py</code> 正常流程入库,再在此标记状态。
+      CLI:<code>python -m tracker.wxscan --review</code> / <code>--mark &lt;URL&gt; 已采纳</code>。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>锚点明细</h3>
+        <span class="hint">点表头排序 · 点行聚焦同口径系列(Esc 退出)</span>
+        <span style="flex:1"></span>
+        <button class="btn" id="csvBtn">导出 CSV</button>
+      </div>
+      <div class="tablewrap">
+        <table id="snap">
+          <thead><tr>
+            <th data-k="date">日期</th>
+            <th data-k="cat">类别</th>
+            <th data-k="item">品目</th>
+            <th>数值(原文)</th>
+            <th class="num" data-k="perUnit">主数值</th>
+            <th data-k="caliber">口径</th>
+            <th>分级</th>
+            <th>出处</th>
+          </tr></thead>
+          <tbody id="snapBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>公司公告流(巨潮资讯,2026 年以来)</h3>
+        <span class="hint" id="annHint"></span>
+        <span style="flex:1"></span>
+        <span id="annFilters" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+      </div>
+      <div class="tablewrap" style="max-height:460px">
+        <table id="annTable">
+          <thead><tr>
+            <th data-k="date">披露日</th>
+            <th data-k="company">公司</th>
+            <th>标题</th>
+            <th data-k="tag">标签</th>
+            <th>原文</th>
+          </tr></thead>
+          <tbody id="annBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <details id="caliber">
+    <summary>口径说明 · 审计(点开核对)</summary>
+    <div id="caliberBody"></div>
+  </details>
+  <div id="foot" style="margin-top:8px"></div>
+</footer>
+<script src="app.js"></script>
+<script>
+/* 结论横幅(v4 四板对齐):A 定价证据 / B 产业在线 / C 管线健康。
+   自包含读 STORAGE_DATA;机器只统计现象,行动由人决定。 */
+(function () {
+  const D = window.STORAGE_DATA; if (!D) return;
+  const gen = (D.generatedAt || "").slice(0, 10);
+  const items = (D.audit && D.audit.items) || [];
+  const st = name => { const it = items.find(c => c.name.includes(name)); return it ? it.status : null; };
+  const note = name => { const it = items.find(c => c.name.includes(name)); return it ? it.note : ""; };
+  /* A 定价证据:锚点超窗(工作日) + 口径哨兵 */
+  const anchors = D.anchors || [];
+  const lastA = anchors.length ? anchors.map(a => a.date).sort().pop() : null;
+  const lag = lastA ? Math.round((new Date(gen) - new Date(lastA)) / 864e5) : 999;
+  const sentinel = st("口径哨兵");
+  const lightA = (lag > 35 || sentinel === "WARN") ? (lag > 50 ? "red" : "amber") : "green";
+  /* B 产业在线:公告流 + 周评 + B2B 新鲜度 */
+  const annSt = st("公告流在线");   // ≤15 天 PASS
+  const annLag = parseInt((note("公告流在线").match(/距今 (\d+) 天/) || [0, 0])[1]);
+  const wkSt = st("周评层在线");    // ≤10 天 PASS
+  const b2bSt = st("B2B 每品名样本");
+  const lightB = (annSt === "FAIL") ? "red" : (annSt === "WARN" || wkSt === "WARN" || b2bSt === "WARN") ? "amber" : "green";
+  /* C 管线:audit 总闸 + 候选堆积(>30 视为积压) */
+  const auditPass = !!(D.audit && D.audit.pass);
+  const nPend = (D.pending || []).filter(p => p.status === "待核验").length;
+  const lightC = !auditPass ? "red" : (nPend > 30 ? "amber" : "green");
+  /* 上色 */
+  const set = (id, c) => { const el = document.getElementById(id); el.className = "bulb " + c; };
+  set("bulbA", lightA); set("bulbB", lightB); set("bulbC", lightC);
+  /* 结论 */
+  const worst = [lightA, lightB, lightC];
+  let verdict;
+  if (worst.includes("red")) verdict = "存在红色行动信号";
+  else if (worst.includes("amber")) verdict = "局部观察中 · 无红色行动信号";
+  else verdict = "✓ 三层均无异常";
+  const vt = document.getElementById("verdictTxt");
+  vt.textContent = verdict;
+  vt.style.color = worst.includes("red") ? "#b91c1c" : worst.includes("amber") ? "#b45309" : "#047857";
+  /* 驱动项 */
+  const drv = [];
+  drv.push(`<b>A 定价:</b>锚点距今 ${lag} 天(月调品窗 35)· 口径哨兵 ${sentinel || "—"}`);
+  drv.push(`<b>B 在线:</b>公告流 ${annSt || "—"} · 周评 ${wkSt || "—"}`);
+  drv.push(`<b>C 管线:</b>审计 ${auditPass ? "PASS" : "FAIL"} · 候选待核验 ${nPend}`);
+  document.getElementById("drvTxt").innerHTML = drv.join("<br>");
+  const none = verdict.indexOf("均无异常") >= 0;
+  document.getElementById("metaTxt").innerHTML =
+    (none ? `✓ 距上次人工复核:建议每周一次<br>` : "") +
+    `数据截止 ${gen} · 每日 20:40 自动`;
+})();
+</script>
+</body>
+</html>

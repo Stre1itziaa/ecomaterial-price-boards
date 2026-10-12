@@ -1,0 +1,19 @@
+# ---- 数据文件:本地自跑自累积,不入库(版权归 CFM/TrendForce/巨潮等数据商) ----
+**/data/*
+# 人工维护台账为原创内容,随仓库分发:
+!boards/signal/data/csp_ledger.csv
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+
+# ---- 调试残留/设计稿/截图(本地工作产物) ----
+*_backup*.html
+*_backup*.js
+mockup*
+*.png
+probe_*.py
+
+# ---- 本地环境 ----
+.env
