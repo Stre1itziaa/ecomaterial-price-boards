@@ -1,4 +1,4 @@
-date,entity,item,value,source,confidence,note,basis
+﻿date,entity,item,value,source,confidence,note,basis
 2026-02-06,合计,GOOGL+MSFT+META+AMZN 四家 2026 年 AI 基建支出预期,近 7000 亿美元,CNBC 2026-02-06,L2-媒体,2026-09-26 外网复核:CNBC 原文为四家合计(含 Alphabet;原误记三家已更正),event
 2026-02-28,Alphabet,2026 年 capex 上限指引,至多 1850 亿美元,CNBC 2026-02-06,L2-媒体,披露事件日(口径:上限非指引中值);2026-09-26 外网复核:原文主语=Alphabet sees up to $185B(原误记 Microsoft 已更正),event
 2026-06-30,合计,四家 2026 capex 计划,约 7250 亿美元 同比 +77%,Yahoo Finance 2026-06,L2-媒体,,period
