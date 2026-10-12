@@ -10,6 +10,14 @@ fabric boards — plus a signal board that watches for **cycle exit signals**.
 > never mixed. Machines present phenomena; humans decide. If a source has no
 > price today, the board records *no* price — never an interpolation.
 
+## Screenshots
+
+| Storage (8790) | Signal — exit lamps (8794) |
+|---|---|
+| ![storage](docs/screenshots/storage.png) | ![signal](docs/screenshots/signal.png) |
+| **MLCC (8792)** | **Fabric (8793)** |
+| ![mlcc](docs/screenshots/mlcc.png) | ![fabric](docs/screenshots/fabric.png) |
+
 ## Boards
 
 | Board | Port | Tracks | Sources |
