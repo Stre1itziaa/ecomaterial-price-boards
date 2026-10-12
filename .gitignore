@@ -8,11 +8,12 @@ __pycache__/
 *.pyc
 .venv/
 
-# ---- 调试残留/设计稿/截图(本地工作产物) ----
+# ---- 调试残留/本地截图(README 引用的 docs/screenshots 例外) ----
+docs/screenshots/*
+!docs/screenshots/*
 *_backup*.html
 *_backup*.js
 mockup*
-*.png
 probe_*.py
 
 # ---- 本地环境 ----
