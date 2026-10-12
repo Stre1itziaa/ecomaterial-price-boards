@@ -12,23 +12,20 @@
 A3 利好弹性衰减 v1 未启用:需人工事件表(事件日登记),事件表建好前该指标
 在 state 中为 null,看板显示"待事件表"。
 """
-
 from . import tz
 import datetime as dt
 import json
 import pathlib
 import re
 
+import os as _os
 import requests
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATE = ROOT / "data" / "signal_state.json"
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"}
-import os as _os
-# SEC 自动化访问政策要求 UA 附真实联系方式:建议设置环境变量 SEC_CONTACT_EMAIL
-_SEC_EMAIL = _os.environ.get("SEC_CONTACT_EMAIL", "research contact@example.com")
-SEC_UA = {"User-Agent": f"ai-signal-tracker research {_SEC_EMAIL}"}
+SEC_UA = {"User-Agent": "ai-signal-tracker research " + _os.environ.get("SEC_CONTACT_EMAIL", "research") + ""}
 
 # 篮子定义(新浪 gb_ 符号小写)
 HARDWARE = ["wdc", "smh", "nvda", "mu", "amd"]          # A1 硬件贝塔篮

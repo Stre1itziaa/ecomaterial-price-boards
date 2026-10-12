@@ -116,9 +116,9 @@ python -c "from tracker import update, store; update.export_dashboard(store.conn
 
 ```bat
 schtasks /create /tn "storage-price-daily" /sc daily /st 18:40 ^
-  /tr "cmd /c cd /d <repo>/storage && python -m tracker.update >> data/schtasks.log 2>&1" /f
+  /tr "cmd /c cd /d <repo>\storage-price-tracker && python -m tracker.update >> data\schtasks.log 2>&1" /f
 schtasks /create /tn "storage-price-cfm-weekly" /sc weekly /d FRI /st 19:30 ^
-  /tr "cmd /c cd /d <repo>/storage && python -m tracker.update >> data/schtasks.log 2>&1" /f
+  /tr "cmd /c cd /d <repo>\storage-price-tracker && python -m tracker.update --with-cfm >> data\schtasks.log 2>&1" /f
 ```
 
 - `storage-price-daily`：每天 18:40（TF 现货 ~18:10 更新后）抓 TF 两页；

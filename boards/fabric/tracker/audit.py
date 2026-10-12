@@ -9,22 +9,20 @@
 5. 公告流覆盖——四家公司在库、最新公告距抓取日 ≤15 天(在线性代理);
 6. 公告打标——重要公告(调价/经营数据/定期报告/扩产)≥5 条。
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import datetime as dt
 import pathlib
 import sqlite3
 import sys
 
 from .parts import CALIBERS, COMPANIES, ITEMS
-
-# ---- Windows GBK 控制台防御 ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "fabric.db"

@@ -1,5 +1,4 @@
 """SQLite 存储：products + quotes 两张主表，UPSERT 幂等。"""
-
 from . import tz
 import datetime as dt
 import json

@@ -7,21 +7,19 @@ MLCC 特有强校验：
    不同属正常，价差>50% 仅 WARN 并列出，供人工核对）。
 3. 新闻锚点——对照公开报道的华强北/分销报价数量级。
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import datetime as dt
 import json
 import pathlib
 import sqlite3
 import sys
-
-# ---- Windows GBK 控制台防御 ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "mlcc.db"

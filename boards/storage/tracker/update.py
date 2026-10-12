@@ -4,8 +4,14 @@
   python -m tracker.update             # 抓当天
   python -m tracker.update --reparse   # 对 data/snapshots/ 里的快照重解析入库（不联网）
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import argparse
 import datetime as dt
 import json
@@ -13,15 +19,6 @@ import pathlib
 import re
 
 from . import fetch, parse, store
-
-# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台,2026-10-12) ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "storage.db"

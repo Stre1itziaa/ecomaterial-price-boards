@@ -17,8 +17,14 @@
 用法：python -m tracker.verify [--days 3]
 退出码：任何 MISMATCH → 1。
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import argparse
 import datetime as dt
 import json
@@ -28,15 +34,6 @@ import sys
 
 from . import dxen, hdd, parse, store
 from .cfm import parse_sample_data, CATEGORY_PAGES
-
-# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台,2026-10-12) ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SNAP = ROOT / "data" / "snapshots"

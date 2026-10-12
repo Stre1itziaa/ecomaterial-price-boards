@@ -5,8 +5,14 @@
   python -m tracker.update --ickey-only
   python -m tracker.update --lcsc-only
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import argparse
 import datetime as dt
 import json
@@ -15,15 +21,6 @@ import pathlib
 from . import audit, store
 from .news_anchors import NEWS_ANCHORS
 from .parts import PARTS
-
-# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台,2026-10-12) ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "mlcc.db"

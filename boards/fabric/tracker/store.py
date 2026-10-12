@@ -6,7 +6,6 @@
 - fetch_log     抓取日志
 本品类免费源下无连续日频价格序列(见 parts.py 说明),故无 products/quotes 表。
 """
-
 from . import tz
 import datetime as dt
 import json

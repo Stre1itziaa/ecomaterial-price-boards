@@ -56,7 +56,7 @@ python serve.py                     # 看板 http://127.0.0.1:8793
 
 ```bat
 schtasks /create /tn "fabric-price-daily" /sc daily /st 20:40 ^
-  /tr "cmd /c cd /d <repo>/fabric && python -m tracker.update >> data/schtasks.log 2>&1" /f
+  /tr "cmd /c cd /d <repo>\fabric-price-tracker && python -u -m tracker.update >> data\schtasks.log 2>&1" /f
 ```
 
 (存储 18:40 / MLCC 20:10 / 本板 20:40 错峰。公告流为增量去重,漏跑可回补;

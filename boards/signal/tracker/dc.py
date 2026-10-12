@@ -9,7 +9,6 @@ YoY 直接存 press release 原文百分比(不自行重算,口径=原文)。
 URL 清单人工维护(与 CSP 台账同节奏:每季财报后追加 3 行再跑 update)。
 2026-09-24 由 sec-search 全文检索定位,2025-02 至 2026-09 共 21 期。
 """
-
 from . import tz
 import datetime as dt
 import json
@@ -17,11 +16,10 @@ import pathlib
 import re
 import time
 
+import os as _os
 import requests
 
-import os as _os
-_SEC_EMAIL = _os.environ.get("SEC_CONTACT_EMAIL", "research contact@example.com")
-UA = f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) {_SEC_EMAIL}"
+UA = "Mozilla/5.0 ((Windows NT 10.0; Win64; x64)) research " + _os.environ.get("SEC_CONTACT_EMAIL", "research") + ""
 
 # (ticker, 指标名, filed_at, 期间标签, URL)
 DC_URLS = [

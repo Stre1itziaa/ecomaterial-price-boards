@@ -4,7 +4,6 @@
 + 最小起订量（eligibleTransactionVolume.minPrice）。
 料号按 name 尾词精确匹配，避免同系列干扰。
 """
-
 from . import tz
 import pathlib
 import re

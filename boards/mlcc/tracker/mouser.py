@@ -12,7 +12,6 @@ JS 挑战页（~1.5KB），challenge 自动解开并重载（实测 10~25s），
 口径：Mouser 单件挂牌价 ≠ 立创"起订档单价"（系统性偏高，量大档差数倍），
 仅作缺货料号的独立参照价，不与立创/云汉混算、不入双源价差对照。
 """
-
 from . import tz
 import json
 import pathlib

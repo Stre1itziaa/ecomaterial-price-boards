@@ -1,8 +1,2 @@
-# core(全板共用)
-requests>=2.31
-beautifulsoup4>=4.12
-
-# browser-based scrapers(立创/Mouser/阿里等 JS 页)— 可选层:
-#   pip install playwright && python -m playwright install chromium
-# 未装 playwright 时,依赖 JS 渲染的序列为空,其余板面正常。
-playwright>=1.40 ; python_version >= "3.10"
+requests
+playwright

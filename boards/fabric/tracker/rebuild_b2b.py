@@ -9,7 +9,6 @@ b2b_daily 里的历史聚合仍是旧规则产物——原始挂牌行全量在 
   python -m tracker.rebuild_b2b            # 重算全部日期,打印前后对照
   python -m tracker.rebuild_b2b --dry      # 只打印对照,不写库
 """
-
 from . import tz
 import argparse
 import datetime as dt

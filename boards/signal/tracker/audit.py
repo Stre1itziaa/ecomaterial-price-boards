@@ -3,20 +3,18 @@
 2026-09-24 改版:公告流判死(连接器企业公告=不产出价格/不预警/纯冗余),
 相关 4 项检查移除;cninfo 表仅存档不再更新。
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import datetime as dt
 import pathlib
 import sqlite3
 import sys
-
-# ---- Windows GBK 控制台防御 ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "signal.db"
@@ -30,7 +28,7 @@ def run_checks(con: sqlite3.Connection, today: dt.date, csp_rows=None, dc_rows=N
                        "status": status or ("PASS" if ok else "FAIL"),
                        "note": note})
 
-    # 0. 需求一线台账(筛子 9)——量级/存在性检查全部硬 FAIL:自检灯必须对失明免疫
+    # 0. 需求一线台账(CSP capex)——量级/存在性检查全部硬 FAIL:自检灯必须对失明免疫
     csp_rows = csp_rows or []
     check("CSP capex 台账 ≥6 条(需求一线)", len(csp_rows) >= 6, f"{len(csp_rows)} 条")
     bad_csp = [r for r in csp_rows if not (r.get("source") or "").strip()]

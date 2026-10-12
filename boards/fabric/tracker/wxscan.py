@@ -15,7 +15,6 @@ G75 环比 +14%、7628 成交 13.0-13.7 元/米)。本模块每日扫一次搜�
 - query 直接拼在 URL 串上(requests params 编码形态会触发空壳);
 - 公众号名在 span.all-time-y2,发布时间为 timeConvert('unix') 字面量。
 """
-
 from . import tz
 import datetime as dt
 import html as htmllib

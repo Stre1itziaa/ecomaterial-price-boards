@@ -7,7 +7,6 @@
   - stockNumber: 精确库存
 口径：第一档单价为主口径，全阶梯入 extra。
 """
-
 from . import tz
 import json
 import pathlib

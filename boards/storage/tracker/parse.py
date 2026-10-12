@@ -6,7 +6,6 @@
 - 免费页部分板块只有产品名 chips 无数值（LPDDR现货、Mobile DRAM合约、
   eMMC现货、eMMC/UFS合约、Wafer合约），自动跳过。
 """
-
 from . import tz
 import datetime as dt
 import json

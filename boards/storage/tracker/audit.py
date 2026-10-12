@@ -8,21 +8,19 @@
 输出：控制台 + data/audit_report.md。任何 FAIL 都表示数据不可信，必须排查。
 run_checks() 供 update.py 在导出时调用，把审计结论嵌入看板数据。
 """
-
 from . import tz
+# ---- Windows GBK 控制台防御:中文输出强制 UTF-8(开源跨平台) ----
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    _sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import datetime as dt
 import pathlib
 import re
 import sqlite3
 import sys
-
-# ---- Windows GBK 控制台防御 ----
-import sys as _sys
-try:
-    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB = ROOT / "data" / "storage.db"
@@ -145,14 +143,13 @@ def run_checks(con: sqlite3.Connection, today: dt.date) -> list[dict]:
               r["n"] >= 25 and r["a"] <= "2026-03-01",
               f"{r['a']} → {r['b']}，{r['n']} 周")
 
-    # CFM 内部一致性抽查(2026-10-12 改动态):eMMC 8GB 详情序列存在且首值>0
-    # (原硬编码 6/23/20.0 版在 sampleData 13 周窗口滚动后必然查无此行而误报)
+    # CFM 内部一致性抽查：eMMC 8GB 5.1 详情页 6/23 本周价 vs 品类表当前价
     row = con.execute("""
-        SELECT MIN(q.date) a, COUNT(*) n FROM quotes q JOIN products p ON p.id=q.product_id
-        WHERE p.source='CFM' AND p.name LIKE 'eMMC 8GB%'""").fetchone()
-    ok = row is not None and row["n"] >= 5
-    check("锚点: CFM eMMC 8GB 详情序列覆盖(≥5 期)",
-          ok, f"覆盖 {row['n'] if row else 0} 期{', 自 ' + row['a'] if row and row['a'] else ''}")
+        SELECT q.avg FROM quotes q JOIN products p ON p.id=q.product_id
+        WHERE p.source='CFM' AND p.name LIKE 'eMMC 8GB%' AND q.date='2026-06-23'""").fetchone()
+    check("锚点: CFM eMMC 8GB 详情序列首值 = 品类表报价口径",
+          row is not None and abs(row["avg"] - 20.0) < 0.01,
+          f"6/23 本周价 {row['avg'] if row else 'N/A'}（品类表当前 $20.00）")
 
     # ---- 4. HDD 档位单调性（强校验）：同型同日 New 挂牌价 ≥ Refurbished/Recertified ----
     # 档位价倒挂=抓取/解析/店铺占位价异常，同 MLCC 阶梯单调性的位置

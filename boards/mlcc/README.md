@@ -67,7 +67,7 @@ MISMATCH 退出码 1。
 
 ```bat
 schtasks /create /tn "mlcc-price-daily" /sc daily /st 20:10 ^
-  /tr "cmd /c cd /d <repo>/mlcc && python -m tracker.update >> data/schtasks.log 2>&1" /f
+  /tr "cmd /c cd /d <repo>\mlcc-price-tracker && python -u -m tracker.update >> data\schtasks.log 2>&1" /f
 ```
 
 （与存储版 18:40 错峰；漏跑之日无法回补，靠每日任务保证连续。）
